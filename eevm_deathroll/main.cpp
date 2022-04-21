@@ -327,17 +327,25 @@ int main(int argc, char** argv)
 
   uint256_t timeoutInterval = 888;
   uint256_t diceSize = 1234;
-  print_here(0);
 
   // Deploy the contract
   const auto contract_address = deploy_contract(env, timeoutInterval, diceSize);
-  print_here(1);
   auto result_join = join(env, contract_address);
-  print_here(2);
   move(env, contract_address);
-  print_here(3);
-
   diceSize = get_diceSize(env, contract_address);
+  std::cout << diceSize << std::endl;
+
+  move(env, contract_address);
+  diceSize = get_diceSize(env, contract_address);
+  std::cout << diceSize << std::endl;
+
+  move(env, contract_address);
+  diceSize = get_diceSize(env, contract_address);
+  std::cout << diceSize << std::endl;
+
+  move(env, contract_address);
+  diceSize = get_diceSize(env, contract_address);
+  std::cout << diceSize << std::endl;
 
   // const auto result = justHelloWorld(env, contract_address);
 
@@ -345,7 +353,6 @@ int main(int argc, char** argv)
   //   std::cout << e;
   // }
   // std::cout << std::endl;
-  std::cout << diceSize << std::endl;
 
   return 0;
 }
