@@ -1,0 +1,22 @@
+Building eevm : https://github.com/microsoft/eEVM
+
+CMakeLists.txt
+add following line at the end
+	add_sample(deathroll)
+
+cd PATH/TO/eevm/
+mkdir deathroll
+	cp deathroll2.sol, deathroll2_combined.json, main.cpp files into the folder from our project github
+
+Running the executable
+cd PATH/TO/eevm/build
+./deathroll PATH/TO/deathroll2_combined.json
+
+
+
+//TODO
+1. add random() function
+	a) new opcode
+	b) other method ?
+
+2. refactoring main.cpp
