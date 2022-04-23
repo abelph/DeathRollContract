@@ -1,13 +1,74 @@
-import {useState} from 'react'
+import {useState, useEffect} from 'react'
 import Head from 'next/head'
 import Web3 from 'web3'
 import styles from '../styles/Home.module.css'
 import 'bulma/css/bulma.css'
+import deathrollContract from '../blockchain_folder/deathroll'
 
 export default function Home() {
   const[web3, setWeb3] = useState()
   const[address, setAddress] = useState()
+  const [dcContract, setdcContract] = useState()
+  const [currentPot, setPot] = useState()
+  const [players, setPlayers] = useState()
+  const [lotteryhistory, Setlotteryhistory] = useState()
+  const [lotteryid, Setlotteryid] = useState()
+  const [error, setError] = useState("")
+  const [successMsg, setSuccessMsg] = useState("")
 
+
+  useEffect(() => {
+    if(dcContract) getPot()
+    if(dcContract) getPlayers()
+    if(dcContract) getHistory()
+    if(dcContract) getLotteryId()
+  }, [dcContract, currentPot, players])
+ 
+  const getPot = async () => {
+    const pot = await dcContract.methods.getBalance().call()
+    setPot(web3.utils.fromWei(pot, 'ether'))
+  }
+
+  const getPlayers = async () => {
+    const fromplayers = await dcContract.methods.getPlayers().call()
+    setPlayers(fromplayers)
+  }
+  
+  const getHistory = async () => {
+    const history = await dcContract.methods.lotteryHistory().call()
+    Setlotteryhistory(history)
+  }
+
+  const getLotteryId = async () => {
+    const lotteryID = await dcContract.methods.lotteryId().call()
+    Setlotteryhistory(lotteryID)
+  }
+  const playNow = async () => {
+    try{
+        await dcContract.methods.enter().send({
+          from: address,
+          value: '15000000000000000',
+          gas: 300000,
+          gasPrice: null
+        })
+    }
+    catch(err){
+      setError(err.message)
+    }
+  }
+
+  const pickWinnerHandler = async () => {
+    try{
+        await dcContract.methods.payWinner().send({
+          from: address,
+          gas: 300000,
+          gasPrice: null
+        })
+    }
+    catch(err){
+      setError(err.message)
+    }
+  }
   const connectWallet = async () => {
     if(typeof window !== "undefined" && typeof window.ethereum!== "undefined"){
       try{
@@ -17,12 +78,16 @@ export default function Home() {
 
         const accounts = await web3.eth.getAccounts()
         setAddress(accounts[0])
+        //create local contract copy
+        const dc = deathrollContract(web3)
+        setdcContract(dc)
+
       }catch(err){
-        console.log(err.message)
+        setError(err.message)
       }
     }
     else{
-      console.log("Please install MetaMask")
+      setError("Please install MetaMask")
     }
   }
 
@@ -32,8 +97,8 @@ export default function Home() {
 
     <div>
       <Head>
-        <title>BlackJack</title>
-        <meta name="description" content="BlackJack Game" />
+        <title>DeathRoll</title>
+        <meta name="description" content="Deathroll Game" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
@@ -41,8 +106,8 @@ export default function Home() {
         <nav className = "navbar mt-4 mb-4">
           <div className = "container">
             <div className = "navbar-brand">
-              <h1> Black</h1>
-              <h2> Jack</h2>
+              <h1> Death</h1>
+              <h2> Roll</h2>
               </div>
               <div className = "navbar-end">
                 <button onClick = {connectWallet} className = "button is-link"> Connect Wallet</button>
@@ -55,12 +120,22 @@ export default function Home() {
             <div className = "columns">
                 <div className = "column is-two-thirds">
                   <section className = "mt-5">
-                    <p>Enter the Casino by sending 0.01 ETH</p>
-                    <button className = "button is-link is-large is-light mt-3"> Play now</button>
+                    <p>Enter the Casino by sending 0.015 ETH</p>
+                    <button onClick={playNow} className = "button is-link is-large is-light mt-3"> Play now</button>
                     </section>
                     <section className = "mt-6">
                     <p><b>Admin only: </b>Pick winner</p>
-                    <button className = "button is-primary is-large is-light mt-3"> Play now</button>
+                    <button onClick={pickWinnerHandler} className = "button is-primary is-large is-light mt-3"> Pick Winner</button>
+                    </section>
+                    <section>
+                      <div className="container has-text-danger mt-6">
+                        <p>{error}</p>
+                      </div>
+                    </section>
+                    <section>
+                      <div className="container has-text-success mt-6">
+                        <p>{successMsg}</p>
+                      </div>
                     </section>
 
                 </div>
@@ -71,10 +146,10 @@ export default function Home() {
                       <div className = "content">
                         <h3> History</h3>
                         <div className = "History-entry">
-                          <div> BlackJack #1 Winner </div>
+                          <div> DeathRoll #1 Winner </div>
                           <div> 
-                            <a href = "0x1413fF4234502A2ac11904025EdCA4626EB27F6A" target = "_blank"> 
-                            0x1413fF4234502A2ac11904025EdCA4626EB27F6A</a>
+                            <a href = "https://etherscan.io/address/0x73797adf2f48901c1aBd3a983dd5f264D961A1D6" target = "_blank"> 
+                            0x73797adf2f48901c1aBd3a983dd5f264D961A1D6</a>
                           </div>
                           </div>
                       </div>
@@ -86,11 +161,18 @@ export default function Home() {
                   <div className = "card">
                     <div className = "card-content">
                       <div className = "content">
-                        <h3> Players (1)</h3>
-                        <div> 
-                            <a href = "0x1413fF4234502A2ac11904025EdCA4626EB27F6A" target = "_blank"> 
-                            0x1413fF4234502A2ac11904025EdCA4626EB27F6A</a>
-                          </div>
+                        <h3> Players ({players?.length})</h3>
+                        <ul> 
+                          {
+                            (players && players.length > 0) && players.map((player, index) =>  {
+                              return <li key={`${player}-${index}`}>
+                                <a href = {`https://etherscan.io/address/${player}`} target = "_blank"> 
+                                  {player}
+                                </a>
+                              </li>
+                            })
+                          }
+                        </ul>
                       </div>
                     </div>
                   </div>
@@ -101,7 +183,7 @@ export default function Home() {
                     <div className = "card-content">
                       <div className = "content">
                         <h3> Pot</h3>
-                        <p>10 ETH</p>
+                        <p>{currentPot} Ether</p>
                       </div>
                     </div>
                   </div>
