@@ -20,6 +20,9 @@
 //
 using Addresses = std::vector<eevm::Address>;
 
+
+
+
 struct Environment
 {
   eevm::GlobalState& gs;
@@ -51,6 +54,11 @@ eevm::Address get_random_address()
   return get_random_uint256(20);
 }
 ///////////////////////////////////////////////////////////////////////////////
+
+uint256_t player1 = get_random_address();
+uint256_t player2 = get_random_address();
+
+
 
 // Run input as an EVM transaction, check the result and return the output
 std::vector<uint8_t> run_and_check_result(
@@ -126,44 +134,30 @@ eevm::Address deploy_contract(
   return contract.acc.get_address();
 }
 
-std::vector<uint8_t> join(Environment& env, const eevm::Address& contract_address){
+std::vector<uint8_t> join(Environment& env, const eevm::Address& contract_address, eevm::Address& player2){
   auto function_call = eevm::to_bytes(
     env.contract_definition["hashes"]["join()"]);
-  const auto caller = get_random_address();
+  auto caller = player2;
   const auto output =
     run_and_check_result(env, caller, contract_address, function_call);
   return output;
 }
 
-std::vector<uint8_t> move(Environment& env, const eevm::Address& contract_address){
+std::vector<uint8_t> move(Environment& env, const eevm::Address& contract_address, eevm::Address& player, const uint256_t randomval){
   auto function_call = eevm::to_bytes(
-    env.contract_definition["hashes"]["move()"]);
-  const auto caller = get_random_address();
+    env.contract_definition["hashes"]["move(uint256)"]);
+  auto caller = player;
+  auto hw_randomval = randomval^get_random_uint256();
+
+  append_argument(function_call, hw_randomval);
+
   const auto output =
     run_and_check_result(env, caller, contract_address, function_call);
 
   return output;
 }
 
-// Get the total token supply by calling totalSupply on the contract_address
-// uint256_t get_total_supply(
-//   Environment& env, const eevm::Address& contract_address)
-// {
-//   // Anyone can call totalSupply - prove this by asking from a randomly
-//   // generated address
-//   const auto caller = get_random_address();
 
-//   const auto function_call =
-//     eevm::to_bytes(env.contract_definition["hashes"]["totalSupply()"]);
-
-//   const auto output =
-//     run_and_check_result(env, caller, contract_address, function_call);
-
-//   return eevm::from_big_endian(output.data(), output.size());
-// }
-
-// Get the current token balance of target_address by calling balanceOf on
-// contract_address
 uint256_t get_diceSize(Environment& env, const eevm::Address& contract_address){
   const auto caller = get_random_address();
 
@@ -174,6 +168,65 @@ uint256_t get_diceSize(Environment& env, const eevm::Address& contract_address){
     run_and_check_result(env, caller, contract_address, function_call);
 
   return eevm::from_big_endian(output.data(), output.size());
+}
+
+uint256_t opponentOf(uint256_t current_player){
+  if(current_player == player1) return player2;
+  if(current_player == player2) return player1;
+
+  return -1;
+
+}
+
+int main(int argc, char** argv)
+{
+  srand(time(nullptr));
+
+  if (argc < 2)
+  {
+    std::cout << fmt::format("Usage: {} path/to/hello_combined.json", argv[0])
+              << std::endl;
+    return 1;
+  }
+
+  const auto contract_path = argv[1];
+  std::ifstream contract_fstream(contract_path);
+  if (!contract_fstream)
+  {
+    throw std::runtime_error(
+      fmt::format("Unable to open contract definition file {}", contract_path));
+  }
+
+  // Parse the contract definition from file
+  const auto contracts_definition = nlohmann::json::parse(contract_fstream);
+  const auto all_contracts = contracts_definition["contracts"];
+  const auto deathroll_definition = all_contracts["deathroll2.sol:deathrollGame"];
+
+  const auto owner_address = player1;
+  // Create environment
+  eevm::SimpleGlobalState gs;
+  Environment env{gs, owner_address, deathroll_definition};
+
+
+  uint256_t timeoutInterval = 888;
+  uint256_t diceSize = 1234;
+
+  // Deploy the contract
+  const auto contract_address = deploy_contract(env, timeoutInterval, diceSize);
+  auto result_join = join(env, contract_address, player2);
+  auto current_player = player1;
+  while(diceSize > 0){
+    move(env, contract_address, current_player, get_random_uint256());
+    diceSize = get_diceSize(env, contract_address);
+    std::cout << "after " << current_player <<"'s move, diceSice = " << diceSize << std::endl;
+    current_player = opponentOf(current_player);
+  }
+  std::cout << diceSize << std::endl;
+  if(diceSize == 0){
+    std::cout << "Winner : " << current_player << std::endl;
+  }
+
+  return 0;
 }
 // Transfer tokens from source_address to target_address by calling transfer on
 // contract_address
@@ -277,82 +330,19 @@ uint256_t get_diceSize(Environment& env, const eevm::Address& contract_address){
 //   std::cout << std::string(heading.size(), '-') << std::endl;
 // }
 
-// erc20/main
-// - Parse args
-// - Parse ERC20 contract definition
-// - Deploy ERC20 contract
-// - Transfer ERC20 tokens
-// - Print summary of state
-int main(int argc, char** argv)
-{
-  srand(time(nullptr));
+// Get the total token supply by calling totalSupply on the contract_address
+// uint256_t get_total_supply(
+//   Environment& env, const eevm::Address& contract_address)
+// {
+//   // Anyone can call totalSupply - prove this by asking from a randomly
+//   // generated address
+//   const auto caller = get_random_address();
 
-  if (argc < 2)
-  {
-    std::cout << fmt::format("Usage: {} path/to/hello_combined.json", argv[0])
-              << std::endl;
-    return 1;
-  }
+//   const auto function_call =
+//     eevm::to_bytes(env.contract_definition["hashes"]["totalSupply()"]);
 
-  // const uint256_t total_supply = 1000;
-  Addresses users;
+//   const auto output =
+//     run_and_check_result(env, caller, contract_address, function_call);
 
-  // Create an account at a random address, representing the 'owner' who created
-  // the ERC20 contract (gets entire token supply initially)
-  const auto owner_address = get_random_address();
-  users.push_back(owner_address);
-
-  // Create one other initial user
-  const auto alice = get_random_address();
-  users.push_back(alice);
-
-  // Open the contract definition file
-  const auto contract_path = argv[1];
-  std::ifstream contract_fstream(contract_path);
-  if (!contract_fstream)
-  {
-    throw std::runtime_error(
-      fmt::format("Unable to open contract definition file {}", contract_path));
-  }
-
-  // Parse the contract definition from file
-  const auto contracts_definition = nlohmann::json::parse(contract_fstream);
-  const auto all_contracts = contracts_definition["contracts"];
-  const auto deathroll_definition = all_contracts["deathroll2.sol:deathrollGame"];
-
-  // Create environment
-  eevm::SimpleGlobalState gs;
-  Environment env{gs, owner_address, deathroll_definition};
-
-
-  uint256_t timeoutInterval = 888;
-  uint256_t diceSize = 1234;
-
-  // Deploy the contract
-  const auto contract_address = deploy_contract(env, timeoutInterval, diceSize);
-  auto result_join = join(env, contract_address);
-  move(env, contract_address);
-  diceSize = get_diceSize(env, contract_address);
-  std::cout << diceSize << std::endl;
-
-  move(env, contract_address);
-  diceSize = get_diceSize(env, contract_address);
-  std::cout << diceSize << std::endl;
-
-  move(env, contract_address);
-  diceSize = get_diceSize(env, contract_address);
-  std::cout << diceSize << std::endl;
-
-  move(env, contract_address);
-  diceSize = get_diceSize(env, contract_address);
-  std::cout << diceSize << std::endl;
-
-  // const auto result = justHelloWorld(env, contract_address);
-
-  // for(auto e: result_join){
-  //   std::cout << e;
-  // }
-  // std::cout << std::endl;
-
-  return 0;
-}
+//   return eevm::from_big_endian(output.data(), output.size());
+// }

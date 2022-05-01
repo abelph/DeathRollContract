@@ -33,7 +33,7 @@ contract deathrollGame{
     event GameStarted();
     event TimeoutStarted();
     event RollMade(address player, uint8 value);
-
+    event GameWinner(address player);
 
     // Setup methods
 
@@ -67,28 +67,30 @@ contract deathrollGame{
         //require(player2 == 0, "Game has already started.");
 
         gameOver = true;
+        emit GameWinner(player1);
         payable(msg.sender).transfer(address(this).balance);
     }
 
 
     // Play methods
 
-    function move() public returns (uint256) {
+    function move(uint256 randomval) public returns (uint256) {
         require(!gameOver, "Game has ended.");
-        // require(msg.sender == state.whoseTurn, "Not your turn.");
+        require(msg.sender == state.whoseTurn, "Not your turn.");
         //assume random number is generated for now
         // requestRandomWords();
         
         // state.diceSize = s_randomWords[0] % state.diceSize;
-        state.diceSize = s_randomWords[count];
+        state.diceSize = randomval % state.diceSize;
         count += 1;
-        // state.whoseTurn = opponentOf(msg.sender);
+        state.whoseTurn = opponentOf(msg.sender);
         
         // Clear timeout
         timeout = 2**256 - 1;
 
-        if (state.diceSize == 1) {
+        if (state.diceSize == 0) {
             gameOver = true;
+            GameWinner(state.whoseTurn);
             // payable(msg.sender).transfer(address(this).balance); //change to make address payable
         }
 

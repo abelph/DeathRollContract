@@ -11,12 +11,3 @@ mkdir deathroll
 Running the executable
 cd PATH/TO/eevm/build
 ./deathroll PATH/TO/deathroll2_combined.json
-
-
-
-//TODO
-1. add random() function
-	a) new opcode
-	b) other method ?
-
-2. refactoring main.cpp
