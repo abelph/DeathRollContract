@@ -9,5 +9,5 @@ Handles the truffle migration so has infura api information and account informat
 ## web_deathroll:
 Contains front end of the application and local copy of smart contract, contract address, and abi
 
-## credit:
+## Credit:
 "Web3 Tutorial Project | Build a web3js dApp with a Solidity lottery smart contract on Ethereum" by Block Explorer for building front end for application
