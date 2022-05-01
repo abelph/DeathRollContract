@@ -22,6 +22,9 @@
   font-size: 0.9em;
 }
 
+.wrapnum {
+    overflow-wrap: break-word;
+}
 .footer {
   display: flex; 
   flex: 1;
